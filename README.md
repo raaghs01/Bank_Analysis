@@ -1,18 +1,19 @@
-# Banking Data Analysis and Loan Insights Dashboard
+# Banking Data Analysis Dashboard
 
-End-to-end data analytics pipeline — SQL extraction, Python EDA, and an interactive Power BI dashboard — built to uncover loan approval trends, customer segmentation patterns, and marketing campaign performance across 3,000 banking client records.
+End-to-end data analytics workflow — SQL extraction, Python EDA, and an interactive Power BI dashboard — built on **3,000 synthetic banking client records** to explore customer demographics, account-balance distributions, and segmentation patterns (income band, loyalty tier, risk weighting).
 
 ---
 
 ## Project Overview
 
-This project simulates a real-world banking analytics workflow. Starting from raw client data, it moves through SQL querying, exploratory data analysis in Python, and culminates in a fully interactive Power BI dashboard designed for business decision-making.
+This project simulates a banking analytics workflow on synthetic data. Starting from a flat client dataset, it moves through an optional SQL ingestion step, exploratory data analysis in Python, and a Power BI dashboard for business-style reporting.
 
-**Key outcomes:**
-- Loan approval rate identified at **18.2%**
-- Customers aged **30–40** showed the highest conversion rates
-- **Direct marketing** outperformed phone-based outreach in long-term conversions
-- Risk weighting and loyalty tier patterns surfaced through correlation analysis
+**What the analysis actually covers:**
+- Descriptive statistics and distribution analysis across all numeric fields
+- Customer segmentation by income band, loyalty tier, nationality, and risk weighting
+- Correlation analysis across account-balance and lending columns
+
+> **Scope note:** The dataset contains client demographics, account balances, and lending balances only. It has **no marketing-campaign, loan-approval, or conversion fields**, so no campaign-performance or approval-rate analysis is performed. Earlier versions of this README described such metrics — they were not supported by the data and have been removed.
 
 ---
 
@@ -20,11 +21,11 @@ This project simulates a real-world banking analytics workflow. Starting from ra
 
 | Layer | Tool |
 |---|---|
-| Data Storage | MySQL |
+| Data Storage (optional) | MySQL 8.0 |
 | Data Processing | Python (Pandas, NumPy) |
 | Visualization (EDA) | Matplotlib, Seaborn |
 | Business Intelligence | Power BI |
-| Notebook Environment | Jupyter |
+| Notebook Environment | Jupyter / VS Code |
 
 ---
 
@@ -32,27 +33,29 @@ This project simulates a real-world banking analytics workflow. Starting from ra
 
 ```
 Banking-analysis-main/
-├── bankEDA.ipynb              # Exploratory data analysis — distributions, correlations, segmentation
-├── sql_connector.ipynb        # MySQL connection script to load data via environment variables
-├── SQLQuery_1.sql             # SQL query used for KPI extraction
-├── banking-clients.csv        # Synthetic dataset — 3,000 client records, 25 columns
-├── Banking Dashboard (2025).pbix  # Interactive Power BI dashboard (latest version)
-├── Designs.pptx               # Design mockups and presentation slides
-├── .env.example               # Template for local database credentials
-└── requirements.txt           # Python dependencies
+├── bankEDA.ipynb                   # Exploratory data analysis — stats, distributions, segmentation, correlations
+├── sql_connector.ipynb             # Optional: loads the dataset from a local MySQL database via .env credentials
+├── SQLQuery_1.sql                  # Scratch SQL query (SELECT *); not part of the analysis pipeline
+├── setup_db.sql                    # Creates the `banking` schema + `banking-clients` table and loads the CSV
+├── banking-clients.csv             # Synthetic dataset — 3,000 client records, 25 columns
+├── Banking Dashboard (2025).pbix   # Interactive Power BI dashboard (latest version)
+├── Banking Dashboard.pbix          # Earlier Power BI dashboard version
+├── .env.example                    # Template for local MySQL credentials
+├── .gitignore
+└── requirements.txt                # Python dependencies
 ```
 
 ---
 
 ## Dataset Schema
 
-The dataset (`banking-clients.csv`) contains **3,000 synthetic client records** across **25 columns**:
+`banking-clients.csv` contains **3,000 synthetic client records** across **25 columns**:
 
 | Column | Description |
 |---|---|
 | Client ID | Unique client identifier (e.g. `IND81288`) |
 | Name | Client name |
-| Age | Client age |
+| Age | Client age (17–85) |
 | Location ID | Branch/region reference ID |
 | Joined Bank | Date client joined (DD-MM-YYYY) |
 | Banking Contact | Assigned relationship manager |
@@ -62,19 +65,19 @@ The dataset (`banking-clients.csv`) contains **3,000 synthetic client records** 
 | Loyalty Classification | Jade / Silver / Gold / Platinum |
 | Estimated Income | Annual estimated income |
 | Superannuation Savings | Retirement savings balance |
+| Amount of Credit Cards | Number of credit cards held (1–3) |
+| Credit Card Balance | Outstanding credit card balance |
+| Bank Loans | Personal loan balance |
 | Bank Deposits | Total bank deposits held |
 | Checking Accounts | Checking account balance |
 | Saving Accounts | Savings account balance |
 | Foreign Currency Account | Foreign currency holdings |
 | Business Lending | Business loan balance |
-| Amount of Credit Cards | Number of credit cards held |
-| Credit Card Balance | Outstanding credit card balance |
-| Bank Loans | Personal loan balance |
 | Properties Owned | Number of properties owned (0–3) |
 | Risk Weighting | Risk score (1–5, low to high) |
-| BRId | Business region reference ID |
+| BRId | Business region reference ID (1–4) |
 | GenderId | Gender reference ID (1 = Male, 2 = Female) |
-| IAId | Industry/asset class reference ID |
+| IAId | Industry/asset class reference ID (1–22) |
 
 > **Note:** All client records are synthetic and contain no real personal data.
 
@@ -83,22 +86,23 @@ The dataset (`banking-clients.csv`) contains **3,000 synthetic client records** 
 ## Analysis Performed
 
 ### 1. Exploratory Data Analysis (`bankEDA.ipynb`)
-- **Descriptive statistics** — mean, standard deviation, quartiles for all numeric columns
-- **Distribution analysis** — histograms and KDE plots for age, income, account balances
-- **Correlation heatmap** — 9-variable matrix identifying strong positive correlations between deposit types
-- **Categorical breakdowns** — value counts for nationality, occupation, loyalty tier, fee structure
-- **Income segmentation** — clients binned into Low / Med / High income bands using `pd.cut()`
-- **Bivariate analysis** — cross-variable plots examining risk vs. income, age vs. loan balances
+- **Descriptive statistics** — `.info()`, `.describe()`, shape checks across all 25 columns
+- **Income segmentation** — clients binned into Low / Med / High bands with `pd.cut()`
+- **Univariate analysis** — value counts and count plots for categorical fields (nationality, occupation, loyalty tier, fee structure, risk weighting, region, gender)
+- **Bivariate analysis** — categorical breakdowns split by nationality
+- **Numerical distributions** — histograms with KDE for the 9 balance/lending columns
+- **Correlation heatmap** — 9-variable matrix over the account-balance and lending fields
 
-### 2. SQL KPI Extraction (`SQLQuery_1.sql`, `sql_connector.ipynb`)
-- Queried the full dataset from a local MySQL instance
-- Extracted KPIs: average client age, loan approval rates, campaign contact frequencies
+> The notebook currently reads the CSV from a hardcoded Colab path (`/content/Banking.csv`). To run it locally, change that line to `pd.read_csv('banking-clients.csv')`.
+
+### 2. SQL Ingestion (optional — `setup_db.sql`, `sql_connector.ipynb`)
+- `setup_db.sql` creates the `banking` schema and `banking-clients` table and loads the CSV via `LOAD DATA LOCAL INFILE`
+- `sql_connector.ipynb` connects to the local MySQL instance using credentials from `.env` and loads the table into a DataFrame
+- This path is **not required** — the EDA notebook works directly from the CSV
 
 ### 3. Power BI Dashboard (`Banking Dashboard (2025).pbix`)
-- **Filters:** Age group, job type, nationality, loyalty tier
-- **KPIs displayed:** Conversion rate, average campaign contacts, balance distribution
-- **Charts:** Bar charts, heatmaps, line trends, segmented funnels
-- Supports drill-through on customer segments for actionable targeting insights
+- Interactive dashboard over the same dataset, with filters and visuals for demographic and financial segmentation
+- Works offline against the embedded data model — no live connection required
 
 ---
 
@@ -106,55 +110,63 @@ The dataset (`banking-clients.csv`) contains **3,000 synthetic client records** 
 
 ### Python (EDA Notebook)
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/<your-username>/Banking-analysis.git
-   cd Banking-analysis
+1. Create and activate a virtual environment:
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
    ```
 
 2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
+   ```powershell
+   pip install pandas numpy matplotlib seaborn mysql-connector-python python-dotenv ipykernel
+   ```
+   > On very new Python versions (3.13+), installing the full `jupyter`/`jupyterlab` meta-packages from `requirements.txt` can fail on Windows due to long-path limits. The packages above are all the notebooks actually need; run them inside VS Code's notebook editor.
+
+3. Open `bankEDA.ipynb`, select the `.venv` kernel, and run all cells. (Adjust the CSV path as noted above.)
+
+### MySQL Ingestion (Optional)
+
+1. Ensure MySQL 8.0 is running locally.
+
+2. Load the data:
+   ```powershell
+   Get-Content setup_db.sql | & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" --local-infile=1 -u root -p
+   ```
+   This should report `rows_loaded = 3000`.
+
+3. Copy `.env.example` to `.env` and fill in your MySQL password:
+   ```powershell
+   Copy-Item .env.example .env
    ```
 
-3. Open and run `bankEDA.ipynb` in Jupyter — no database needed, it reads directly from `banking-clients.csv`.
-
-### MySQL Connector (Optional)
-
-1. Import `banking-clients.csv` into a MySQL database named `banking`, table `banking-clients`.
-
-2. Copy `.env.example` to `.env` and fill in your credentials:
-   ```bash
-   cp .env.example .env
-   ```
-
-3. Run `sql_connector.ipynb` to load data via the database connection.
+4. Open `sql_connector.ipynb`, select the `.venv` kernel, and run all cells to load the table from MySQL.
 
 ### Power BI Dashboard
 
-1. Open `Banking Dashboard (2025).pbix` in [Power BI Desktop](https://powerbi.microsoft.com/desktop/).
-2. The dashboard works offline against the embedded data model — no live connection required.
+Open `Banking Dashboard (2025).pbix` in [Power BI Desktop](https://powerbi.microsoft.com/desktop/). It works offline against the embedded data model.
 
 ---
 
-## Key Insights
+## Key Observations
 
-| Insight | Finding |
+Drawn directly from the data and the EDA notebook:
+
+| Observation | Finding |
 |---|---|
-| Loan approval rate | 18.2% of clients had active bank loans |
-| Peak conversion cohort | Clients aged 30–40 showed highest loan uptake |
-| Risk by occupation | Blue-collar and self-employed segments had higher risk weightings |
-| Campaign channel | Direct marketing outperformed phone outreach in conversions |
-| Asset correlation | Bank Deposits strongly correlated with Checking and Saving account balances |
-| Average client age | 41.2 years |
+| Dataset size | 3,000 clients × 25 columns, fully synthetic |
+| Average client age | ~51 years (median 51; range 17–85) |
+| Account correlation | Bank Deposits correlate strongly with Checking, Saving, and Foreign Currency balances |
+| Loyalty distribution | Jade is the most common tier, followed by Silver, Gold, then Platinum |
+| Nationality distribution | European clients are the largest group, then Asian and American |
+| Lending balances | Nearly all clients carry a positive `Bank Loans` balance (the dataset has no approval/no-approval flag) |
 
 ---
 
 ## Future Enhancements
 
-- Integrate a live SQL database feed for real-time Power BI refresh
-- Build a loan eligibility scoring model (logistic regression or XGBoost)
-- Automate monthly KPI reports via Power BI Service scheduled refresh
+- Fix the notebook's CSV path so it runs locally without edits
+- Add a loan-eligibility or risk-scoring model (the current data supports risk/segment analysis but not approval prediction)
+- Integrate a live MySQL feed for scheduled Power BI refresh
 - Add geospatial analysis by mapping Location IDs to regions
 
 ---
